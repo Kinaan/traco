@@ -16,12 +16,23 @@ module Traco
       )?
     \z/x
 
+  mattr_accessor :default_column_renamed
+  @@default_column_renamed = true
+
+  def self.setup
+    yield self
+  end
+
   # @example
   #   Traco.column("title", :sv)      # => :title_sv
   #   Traco.column("title", :"pt-BR") # => :title_pt_br
   def self.column(attribute, locale)
     normalized_locale = locale.to_s.downcase.sub("-", "_")
-    "#{attribute}_#{normalized_locale}".to_sym
+    if !@@default_column_renamed && normalized_locale == I18n.default_locale.to_s 
+      attribute.to_sym
+    else
+      "#{attribute}_#{normalized_locale}".to_sym
+    end
   end
 
   # @example

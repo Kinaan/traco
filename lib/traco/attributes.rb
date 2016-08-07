@@ -15,6 +15,12 @@ module Traco
       base.translatable_attributes |= @attributes
 
       base.extend ClassMethods
+      @attributes.each do |attribute|
+        base.class_eval <<-EOM
+          alias_method "#{attribute}_default_reader".to_sym, attribute.to_sym
+          alias_method "#{attribute}_default_writer".to_sym, "#{attribute}=".to_sym
+        EOM
+      end
     end
 
     private
@@ -27,7 +33,11 @@ module Traco
 
           columns_to_try = self.class._locale_columns_for_attribute(:#{attribute}, fallback)
           columns_to_try.each do |column|
-            value = send(column)
+            value = if column == '#{attribute}' 
+              send("#{attribute}_default_reader")
+            else 
+              send(column)
+            end
             return value if value.present?
           end
 
@@ -39,8 +49,12 @@ module Traco
     def define_writer(attribute)
       class_eval <<-EOM, __FILE__, __LINE__ + 1
         def #{attribute}=(value)
-          column = Traco.column(:#{attribute}, I18n.locale).to_s + "="
-          send(column, value)
+          column = Traco.column(:#{attribute}, I18n.locale).to_s
+          if column == '#{attribute}' 
+            send("#{attribute}_default_writer", value)
+          else 
+            send("\#{column}=", value)
+          end
         end
       EOM
     end
